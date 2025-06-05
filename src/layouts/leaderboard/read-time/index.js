@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
-import { BookOpen, Clock } from "lucide-react";
 import * as XLSX from "xlsx";
 
 // @mui material components
 import Card from "@mui/material/Card";
-import Stack from "@mui/material/Stack";
 import Icon from "@mui/material/Icon";
 
 // AI EBOOK DASHBOARD React components
@@ -22,20 +19,9 @@ import Footer from "examples/Footer";
 // API
 import api from "api/axios";
 
-function UserAvatar({ rank, color }) {
-  return (
-    <div
-      className={`h-12 w-12 rounded-full border-solid border border-1 ${color} flex items-center justify-center font-bold`}
-    >
-      {rank}
-    </div>
-  );
-}
-
-UserAvatar.propTypes = {
-  rank: PropTypes.number.isRequired,
-  color: PropTypes.string.isRequired,
-};
+// Components
+import TabNavigation from "./components/TabNavigation";
+import TopReadersSection from "./components/TopReadersSection";
 
 const defaultLeaderboardData = [];
 
@@ -44,29 +30,6 @@ function Leaderboard() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("student");
-
-  const tabs = [
-    {
-      id: "student",
-      label: "Student",
-      shortLabel: "Student",
-      icon: (
-        <BookOpen
-          className={`h-4 w-4 ${activeTab === "student" ? "text-emerald-500" : "text-slate-500"}`}
-        />
-      ),
-    },
-    {
-      id: "school",
-      label: "School",
-      shortLabel: "School",
-      icon: (
-        <Clock
-          className={`h-4 w-4 ${activeTab === "school" ? "text-blue-500" : "text-slate-500"}`}
-        />
-      ),
-    },
-  ];
 
   const handleGetLeaderboard = async () => {
     try {
@@ -104,69 +67,13 @@ function Leaderboard() {
         "User IC": reader.user_ic,
         Name: reader.name,
         School: reader.school || "N/A",
-        "Reading Time": reader.value,
+        "Read Time (minutes)": reader.value,
       }))
     );
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Leaderboard");
-    XLSX.writeFile(workbook, `leaderboard_${activeTab}.xlsx`);
-  };
-
-  const TopReadersSection = () => {
-    return (
-      <section className="leaderboard-section">
-        <div className="flex items-center gap-2 mb-6">
-          <Clock className="h-5 w-5 text-blue-500" />
-          <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Reading Time</h2>
-        </div>
-
-        <div className="space-y-6">
-          {leaderboard?.map((reader, index) => (
-            <div
-              key={`${index}-${reader.name}`}
-              className="grid grid-cols-4  items-center border-b border-slate-100 dark:border-slate-800 pb-6 last:border-0 last:pb-0"
-            >
-              <div className="items-center gap-4 col-span-1 hidden lg:flex">
-                <UserAvatar rank={index + 1} color="border-blue-500" />
-                <p className="font-medium text-slate-800 dark:text-slate-100">{reader?.user_ic}</p>
-              </div>
-
-              <div className="flex items-center gap-4 col-span-3 lg:col-span-2">
-                {reader?.avatar_url ? (
-                  <img src={reader?.avatar_url} alt="avatar" className="w-12 h-12 rounded-full" />
-                ) : (
-                  <img src={`/${activeTab}.png`} alt="avatar" className="w-12 h-12 rounded-full" />
-                )}
-                <div>
-                  <p className="block lg:hidden font-medium text-slate-800 dark:text-slate-100">
-                    {reader?.user_ic}
-                  </p>
-                  <p className="font-medium text-slate-800 dark:text-slate-100 text-xs lg:text-lg">
-                    {reader.name ?? `Test-${activeTab}`}
-                  </p>
-                  {reader.school && (
-                    <p className="hidden lg:block text-sm text-slate-500 dark:text-slate-400">
-                      {reader.school ?? "Test-School"}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 col-span-1">
-                <Clock className="h-5 w-5 text-blue-500" />
-                <span className="font-bold text-lg text-slate-800 dark:text-slate-100">
-                  {reader.value}
-                </span>
-                <span className="hidden lg:block text-sm text-slate-500 dark:text-slate-400">
-                  seconds
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
+    XLSX.writeFile(workbook, `read_time_leaderboard_${activeTab}.xlsx`);
   };
 
   return (
@@ -176,36 +83,39 @@ function Leaderboard() {
         <Card>
           <SoftBox>
             <div className="">
-              <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center justify-center gap-2 py-3 px-2 rounded-md transition-all duration-200 ${
-                      activeTab === tab.id
-                        ? "bg-white dark:bg-slate-800 shadow-sm"
-                        : "hover:bg-white/50 dark:hover:bg-slate-800/50"
-                    }`}
-                  >
-                    {tab.icon}
-                    <span className="hidden sm:inline font-medium text-sm">{tab.label}</span>
-                    <span className="sm:hidden font-medium text-sm">{tab.shortLabel}</span>
-                  </button>
-                ))}
+              <div className="p-4">
+                <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
               </div>
-            </div>
 
-            <div className="p-4">
-              <div className="flex justify-end mb-4">
-                <SoftButton variant="outlined" color="info" size="small" onClick={exportToExcel}>
-                  <Icon>file_download</Icon>&nbsp; Export to Excel
-                </SoftButton>
+              <div className="p-4">
+                {isLoading ? (
+                  <LoadingSpinner message="Loading leaderboard data..." />
+                ) : error ? (
+                  <div className="flex flex-col items-center justify-center p-8 text-center">
+                    <Icon className="text-red-500 mb-4" fontSize="large">
+                      error
+                    </Icon>
+                    <SoftTypography variant="h6" color="error" fontWeight="medium">
+                      {error}
+                    </SoftTypography>
+                    <SoftButton
+                      variant="contained"
+                      color="error"
+                      size="small"
+                      onClick={handleGetLeaderboard}
+                      className="mt-4"
+                    >
+                      Try Again
+                    </SoftButton>
+                  </div>
+                ) : (
+                  <TopReadersSection
+                    leaderboard={leaderboard}
+                    activeTab={activeTab}
+                    onExport={exportToExcel}
+                  />
+                )}
               </div>
-              {isLoading ? (
-                <LoadingSpinner message="Loading leaderboard data..." />
-              ) : (
-                <TopReadersSection />
-              )}
             </div>
           </SoftBox>
         </Card>
